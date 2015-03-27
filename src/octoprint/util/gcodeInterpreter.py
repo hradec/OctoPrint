@@ -92,23 +92,26 @@ class gcode(object):
 
 			T = getCodeInt(line, 'T')
 			if T is not None:
-				posOffset[0] -= offsets[currentExtruder]["x"] if currentExtruder < len(offsets) else 0
-				posOffset[1] -= offsets[currentExtruder]["y"] if currentExtruder < len(offsets) else 0
-
-				currentExtruder = T
-
-				posOffset[0] += offsets[currentExtruder]["x"] if currentExtruder < len(offsets) else 0
-				posOffset[1] += offsets[currentExtruder]["y"] if currentExtruder < len(offsets) else 0
-
-				if len(currentE) <= currentExtruder:
-					for i in range(len(currentE), currentExtruder + 1):
-						currentE.append(0.0)
-				if len(maxExtrusion) <= currentExtruder:
-					for i in range(len(maxExtrusion), currentExtruder + 1):
-						maxExtrusion.append(0.0)
-				if len(totalExtrusion) <= currentExtruder:
-					for i in range(len(totalExtrusion), currentExtruder + 1):
-						totalExtrusion.append(0.0)
+				if T > settings().getInt(["gcodeAnalysis", "maxExtruders"]):
+					self._logger.warn("GCODE tried to select tool %d, that looks wrong, ignoring for GCODE analysis" % T)
+				else:
+					posOffset[0] -= offsets[currentExtruder]["x"] if currentExtruder < len(offsets) else 0
+					posOffset[1] -= offsets[currentExtruder]["y"] if currentExtruder < len(offsets) else 0
+	
+					currentExtruder = T
+	
+					posOffset[0] += offsets[currentExtruder]["x"] if currentExtruder < len(offsets) else 0
+					posOffset[1] += offsets[currentExtruder]["y"] if currentExtruder < len(offsets) else 0
+	
+					if len(currentE) <= currentExtruder:
+						for i in range(len(currentE), currentExtruder + 1):
+							currentE.append(0.0)
+					if len(maxExtrusion) <= currentExtruder:
+						for i in range(len(maxExtrusion), currentExtruder + 1):
+							maxExtrusion.append(0.0)
+					if len(totalExtrusion) <= currentExtruder:
+						for i in range(len(totalExtrusion), currentExtruder + 1):
+							totalExtrusion.append(0.0)
 			
 			G = getCodeInt(line, 'G')
 			if G is not None:
@@ -246,13 +249,16 @@ def getCodeInt(line, code):
 
 
 def getCodeFloat(line, code):
+	import math
 	n = line.find(code) + 1
 	if n < 1:
 		return None
 	m = line.find(' ', n)
 	try:
 		if m < 0:
-			return float(line[n:])
-		return float(line[n:m])
+			val = float(line[n:])
+		else:
+			val = float(line[n:m])
+		return val if not (math.isnan(val) or math.isinf(val)) else None
 	except:
 		return None
